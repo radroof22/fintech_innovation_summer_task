@@ -1,0 +1,13 @@
+name: fintech-innovation
+
+channels:
+  - conda-forge
+
+dependencies:
+  - pandas
+  - pytorch
+  - numpy
+  - pip
+
+  - pip:
+    - sec-edgar-downloader
