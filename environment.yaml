@@ -8,6 +8,11 @@ dependencies:
   - pytorch
   - numpy
   - pip
-
+  - tqdm
+  
   - pip:
     - sec-edgar-downloader
+    - bs4
+    - lxml
+    - transformers
+    - dotenv
