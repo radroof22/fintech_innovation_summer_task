@@ -79,15 +79,20 @@ def handle_html_format(string_10k_text: str):
     for i, item in enumerate(ITEMS_10K):
         first, second = item.split(" ")
         
-        text_regex = f">{first}(\\s|&nbsp;|\\n)*{second}."
-        opts = list(re.finditer(f"{text_regex}\\.", string_10k_text))
+        text_regex = f"{first}(\\s|&nbsp;|\\n)*{second}\\."
+        opts = list(re.finditer(text_regex, string_10k_text))
         if len(opts) < 1:
-            first = first[0] + first[1:].lower()
-            text_regex = f">{first}(\\s|&nbsp;|\\n)*{second}."
-            opts = list(re.finditer(f"{text_regex}\\.", string_10k_text))
+            first_lowercase = first[0] + first[1:].lower()
+            text_regex = f"{first_lowercase}(\\s|&nbsp;|\\n)*{second}\\."
+            opts = list(re.finditer(text_regex, string_10k_text))
 
+        last_start, _ = item_to_index[last_added] if last_added is not None else (0, None)
         if len(opts) > 0:
-            m = opts[-1]
+            m = opts[0]
+            for o in opts:
+                if o.start() > last_start:
+                    m = o
+                    break
             item_to_index[item] = (m.end(), len(string_10k_text))
             if i > 0:
                 start, _ = item_to_index[last_added]
@@ -153,7 +158,7 @@ if __name__ == "__main__":
     # print(entries)
     # for e in entries:
     #     print(e.item, len(e.text))
-    
+
     df = parse_reports(report_paths)
     df.to_json(f"sec_items_{ticker}.json", orient="records")
         
