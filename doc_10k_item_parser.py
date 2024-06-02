@@ -13,13 +13,22 @@ ITEMS_10K = ["ITEM 1", "ITEM 1A", "ITEM 1B", "ITEM 2", "ITEM 3", "ITEM 4", "ITEM
         "ITEM 11", "ITEM 12", "ITEM 13", "ITEM 14", "ITEM 15"]
 
 @dataclass
-class Entry:
+class Item:
     company: str
     year: int
-    item: str
+    name: str
     text: str
 
 def find_10k_doc(soup: BeautifulSoup) -> str:
+    """
+    Iterate through report xml and to find <DOCUMENT> tag with the relevant Items
+
+    Args:
+    - soup: BeautifulSouped text from the report
+
+    Returns:
+    - text of the document containing relevant 10-K report Items
+    """
     content = soup.findAll("document")
 
     for doc in content:
@@ -30,11 +39,22 @@ def find_10k_doc(soup: BeautifulSoup) -> str:
             string_10k = type_children[1]
     return string_10k
 
-def parse_report(path: pathlib.Path) -> list[Entry]:
+def parse_report(path: pathlib.Path) -> list[Item]:
+    """
+    Given the path of a report, read the report and extract the text for each of the items and their corresponding text
+
+    Args:
+    - path: Path
+        The path to the report
+    
+    Returns:
+    - list of text for the Items in the 10-k report
+    """
     company_name = str(path).split("/")[1]
     year_two_digit = str(path).split("/")[3].split("-")[1]
     year = "20" + year_two_digit if int(year_two_digit) < 30 else "19" + year_two_digit
     
+    # NOTE:  Beatiful Soup unable to parse the INTC 2020 due to size
     if year == "2020" and company_name == "INTC":
         return []
     
@@ -59,7 +79,7 @@ def parse_report(path: pathlib.Path) -> list[Entry]:
         text = string_10k.text[start:end].strip()
         
         entries.append(
-            Entry(
+            Item(
                 company_name,
                 year,
                 item,
@@ -74,6 +94,17 @@ def parse_report(path: pathlib.Path) -> list[Entry]:
     return entries
 
 def handle_html_format(string_10k_text: str):
+    """
+    Extracting indices for each of the 10-K report items for the specific report.
+    The html is for newer reports that use the standardized xml/html formatting.
+
+    Args:
+    - string_10k_text: str
+        Raw text of the document containing the document elements from the 10k report.
+    
+    Retuns:
+    - dictionary mapping "ITEM #" to start_index and end_index of section to the report
+    """
     item_to_index = {}
     last_added = None
     for i, item in enumerate(ITEMS_10K):
@@ -100,7 +131,18 @@ def handle_html_format(string_10k_text: str):
             last_added = item
     return item_to_index
 
-def handle_nonhtml_format(string_10k_text: str):
+def handle_nonhtml_format(string_10k_text: str) -> dict[str, tuple[int, int]]:
+    """
+    Extracting indices for each of the 10-K report items for the specific report.
+    The non-html is for older reports that don't use the standardized xml/html formatting.
+
+    Args:
+    - string_10k_text: str
+        Raw text of the document containing the document elements from the 10k report.
+    
+    Retuns:
+    - dictionary mapping "ITEM #" to start_index and end_index of section to the report
+    """
     item_to_index = {}
     last_added = None
 
@@ -124,15 +166,26 @@ def handle_nonhtml_format(string_10k_text: str):
     return item_to_index
 
 def parse_reports(report_paths: list[pathlib.Path]) -> pd.DataFrame:
+    """
+    Iterate through all of the report paths, read the reports, extract the 
+    item document, and create list of items with the correct text in the document
+
+    Args:
+    - report_paths: list[Path]
+        List of paths to reports for tickers to extract item information from
+
+    Returns:
+    - pd.DataFrame of 10K reports organized with columns Company, Year, Item, and Text
+    """
     columns = ["Company", "Year", "Item", "Text"]
     dictionary = {k: [] for k in columns}
     
     for path in tqdm(report_paths):
-        items: list[Entry] = parse_report(path)
+        items: list[Item] = parse_report(path)
         for item in items:
             dictionary["Company"].append(item.company)
             dictionary["Year"].append(item.year)
-            dictionary["Item"].append(item.item)
+            dictionary["Item"].append(item.name)
             dictionary["Text"].append(item.text)
         
     df = pd.DataFrame(dictionary)
@@ -147,17 +200,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ticker = args.ticker
 
-    # report_paths: list[str] = []
-    # for root, dirs, files in os.walk(f"sec-edgar-filings/{ticker}/"):
-    #     for name in files:
-    #         if name.endswith(".txt"):
-    #             report_paths.append(os.path.join(root, name))
+    report_paths: list[str] = []
+    for root, dirs, files in os.walk(f"sec-edgar-filings/{ticker}/"):
+        for name in files:
+            if name.endswith(".txt"):
+                report_paths.append(os.path.join(root, name))
 
-    entries = parse_report("sec-edgar-filings/AAPL/10-K/0001193125-13-416534/full-submission.txt")
-    print(entries)
-    for e in entries:
-        print(e.item, len(e.text))
-
-    # df = parse_reports(report_paths)
-    # df.to_json(f"sec_items_{ticker}.json", orient="records")
+    df = parse_reports(report_paths)
+    df.to_json(f"sec_items_{ticker}.json", orient="records")
         
