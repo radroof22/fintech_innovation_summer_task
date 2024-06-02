@@ -90,7 +90,7 @@ def handle_html_format(string_10k_text: str):
         if len(opts) > 0:
             m = opts[0]
             for o in opts:
-                if o.start() > last_start:
+                if o.start() - last_start > 100:
                     m = o
                     break
             item_to_index[item] = (m.end(), len(string_10k_text))
@@ -98,7 +98,6 @@ def handle_html_format(string_10k_text: str):
                 start, _ = item_to_index[last_added]
                 item_to_index[last_added] = start, m.start()
             last_added = item
-
     return item_to_index
 
 def handle_nonhtml_format(string_10k_text: str):
@@ -148,17 +147,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ticker = args.ticker
 
-    report_paths: list[str] = []
-    for root, dirs, files in os.walk(f"sec-edgar-filings/{ticker}/"):
-        for name in files:
-            if name.endswith(".txt"):
-                report_paths.append(os.path.join(root, name))
+    # report_paths: list[str] = []
+    # for root, dirs, files in os.walk(f"sec-edgar-filings/{ticker}/"):
+    #     for name in files:
+    #         if name.endswith(".txt"):
+    #             report_paths.append(os.path.join(root, name))
 
-    # entries = parse_report("sec-edgar-filings/KO/10-K/0000021344-01-000005/full-submission.txt")
-    # print(entries)
-    # for e in entries:
-    #     print(e.item, len(e.text))
+    entries = parse_report("sec-edgar-filings/AAPL/10-K/0001193125-13-416534/full-submission.txt")
+    print(entries)
+    for e in entries:
+        print(e.item, len(e.text))
 
-    df = parse_reports(report_paths)
-    df.to_json(f"sec_items_{ticker}.json", orient="records")
+    # df = parse_reports(report_paths)
+    # df.to_json(f"sec_items_{ticker}.json", orient="records")
         
