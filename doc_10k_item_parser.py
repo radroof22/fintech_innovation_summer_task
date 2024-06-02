@@ -112,22 +112,29 @@ def handle_html_format(string_10k_text: str):
         
         text_regex = f"{first}(\\s|&nbsp;|\\n)*{second}\\."
         opts = list(re.finditer(text_regex, string_10k_text))
+        
+        # if "ITEM #", try lower case i.e. "Item #"
         if len(opts) < 1:
             first_lowercase = first[0] + first[1:].lower()
             text_regex = f"{first_lowercase}(\\s|&nbsp;|\\n)*{second}\\."
             opts = list(re.finditer(text_regex, string_10k_text))
 
         last_start, _ = item_to_index[last_added] if last_added is not None else (0, None)
+
         if len(opts) > 0:
             m = opts[0]
             for o in opts:
+                # updates actual Item text, not table of contents
                 if o.start() - last_start > 100:
                     m = o
                     break
             item_to_index[item] = (m.end(), len(string_10k_text))
+            
             if i > 0:
+                # update previous end point with the start of current point
                 start, _ = item_to_index[last_added]
                 item_to_index[last_added] = start, m.start()
+
             last_added = item
     return item_to_index
 
@@ -151,16 +158,22 @@ def handle_nonhtml_format(string_10k_text: str) -> dict[str, tuple[int, int]]:
         
         text_regex = f"{first}(\\s|&nbsp;|\\n)*{second}\\."
         opts = list(re.finditer(f"{text_regex}", string_10k_text))
+        
+        # attempt lowercase if needed
         if len(opts) < 1:
             first_lowercase = first[0] + first[1:].lower()
             text_regex = f"{first_lowercase}(\\s|&nbsp;|\\n)*{second}\\."
             opts = list(re.finditer(f"{text_regex}", string_10k_text))
+
         if len(opts) > 0:
             m = opts[0]
             item_to_index[item] = (m.end(), len(string_10k_text))
+            
+            # update previous item's end point with current's start point
             if i > 0:
                 start, _ = item_to_index[last_added]
                 item_to_index[last_added] = start, m.start()
+                
             last_added = item
 
     return item_to_index
