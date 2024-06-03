@@ -121,7 +121,7 @@ def identify_operating_segments(context: str, company: str, year: int) -> str:
     return responses[0]
 
 
-def identify_operating_income_by_operating_segment(context: str, metric_10k: str, company: str, year: int, operating_segment: str) -> str:
+def identify_metric_10k_by_operating_segment(context: str, metric_10k: str, company: str, year: int, operating_segment: str) -> str:
     """
     Given relevant sections of the 10-K report for the metric, ask llama to identify the specific metric for the specific operating segment.
     The metrics include revenue/sales, operating income, and more.
@@ -146,9 +146,11 @@ def identify_operating_income_by_operating_segment(context: str, metric_10k: str
     
     EXTRACT_REVENUE_BY_OPERATING_SEGMENT_PROMPT = f"""
         Read the above sections of the 10-K report for {company} in the year {year} relevant to the {operating_segment} operating segment. 
-            Identify the stock's {metric_10k} for the {operating_segment} operating segment in the year {year - 1}
-            The expected format is below (ONLY OUTPUT THE NUMBER AND DOLLAR SIGN. NO OTHER TEXT): 
-            $xxxxxxxx
+            Identify the stock's {metric_10k} for the {operating_segment} operating segment in the year {year - 1}.
+            When reading the report you may encounter negative numbers which are symbolized by parentheses around them (i.e. (XX.XX)). Make sure
+            you return the resulting value using a negative appropriately.
+            The expected format is below (ONLY OUTPUT THE NUMBER AND DOLLAR SIGN (and possible negative sign). NO OTHER TEXT): 
+            $xxxxxxxx or -$xxxxxxxx.
     """
     
     responses = []

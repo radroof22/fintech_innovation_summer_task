@@ -16,3 +16,4 @@ dependencies:
     - lxml
     - transformers
     - dotenv
+    - streamlit
