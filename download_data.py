@@ -22,12 +22,12 @@ class SECDownloader:
         but otherwise will be all under `sec-edgar-filings`.
 
         Args:
-            - ticker: str
-                Stock ticker you want to download 10K data for
-            - from_timestamp: datetime
-                Download all 10-K reports after this timestamp
-            - to_timestamp: datetime
-                Download all 10-K reports before this timestamp
+        - ticker: str
+            Stock ticker you want to download 10K data for
+        - from_timestamp: datetime
+            Download all 10-K reports after this timestamp
+        - to_timestamp: datetime
+            Download all 10-K reports before this timestamp
         """
         self.downloader.get("10-K", ticker,
                             after=from_timestamp.strftime("%Y-%m-%d"), 
@@ -38,7 +38,6 @@ if __name__ == "__main__":
         "AAPL",
         "KO",
         "INTC",
-        "DIS"
     ]
 
     FROM_TIMESTAMP = datetime(1995, 1, 1)

@@ -17,11 +17,10 @@ def generate_operating_segment_specific_regex(operating_segment_name: str):
     return r"(?i)" + r"\s+".join(words)
 
 DELTA = 200 # characters around the regex find
-METRIC_10K_NAME = "Operating Income"
+METRIC_10K_NAME = "Revenue"
 
 def load_items_dataset(sec_items_dir: Path, item_names: list[str]) -> pd.DataFrame:
     """
-
     Args:
     - sec_items_dir: Path
         Path to directory containing the parsed sec item reports for tickers
@@ -75,35 +74,6 @@ def collect_operating_segment_snippets(text: str) -> list[str]:
     snippets = [text[m.start() - DELTA: m.end() + DELTA] for m in matches]
     return snippets
 
-def parse_operating_segments_from_llama_response(llama_response: str) -> list[str]:
-    """
-    Parse operating segments from llama's response
-
-    Args:
-    - llama_response: str
-        Llama's response to "identifying operating segments" prompt
-    
-    Returns:
-    - list[str] containing names of the operating segments
-    """
-    report_op_segs = []
-    for line in llama_response.split("\n\n"):
-        if line.count(",") > 1: # correct line of response containing its proposed operating segments
-            for oper_seg in line.split(","):
-                # handle if llama uses and for last term
-                if "and " == oper_seg.strip()[:4]:
-                    oper_seg = oper_seg.split("and ")[1]
-                
-                # remove any paranthesized statements
-                if len(oper_seg.split("(")) > 1:
-                    oper_seg = oper_seg.split("(")[1]
-                oper_seg = oper_seg.split(")")[0]
-
-                oper_seg = oper_seg.strip()
-                oper_seg = re.sub(r'[^(a-zA-Z|\&) ]', '', oper_seg) # remove non alphabetical
-                report_op_segs.append(oper_seg)
-    return report_op_segs
-
 def extract_operating_segments(df: pd.DataFrame) -> pd.DataFrame:
     """
     Parse operating segments for each company and 10-K report year. For best results, input Item's 1, 1A, and 1B.
@@ -137,8 +107,7 @@ def extract_operating_segments(df: pd.DataFrame) -> pd.DataFrame:
             context: str = "\n\n".join(operating_segment_snippets)
 
             logging.info(f"Finding segments  for\t{company, year}\t{len(operating_segment_snippets)}\t{len(" ".join(operating_segment_snippets))}")
-            llama_response: str = identify_operating_segments(context, company, year)
-            operating_segments: list[str] = parse_operating_segments_from_llama_response(llama_response)
+            operating_segments: list[str] = identify_operating_segments(context, company, year)
             
             logging.info("Segments found: \t" + str(operating_segments))
             for operating_segment in list(set(operating_segments)):
@@ -148,59 +117,6 @@ def extract_operating_segments(df: pd.DataFrame) -> pd.DataFrame:
 
     return pd.DataFrame(operating_segment_dict)
 
-def format_monetary_from_llama_response(llama_response: str) -> float:
-    """
-    Extract dollar value of metric from llama's response to identifying the metric for the operating segment.
-
-    Args:
-    - llama_response: str
-        Llama's raw response to trying to find the metric_10k in context for specific operating segment
-    
-    Returns:
-    - float dollar value for metric
-    """
-    value = None
-    # Regex pattern for $2,345 million, $2345, and $2,451,321 billion
-    pattern = r"\$\d+(,\d{3})*(?:\.\d+)?(?:\s?(million|billion))?"
-    matches = list(re.finditer(pattern, llama_response))
-    if len(matches) == 0:
-        return None
-    line = llama_response[matches[-1].start():matches[-1].end()]
-
-    # for line in llama_response.split("\n\n"):
-    # if "$" not in line:
-    #     continue
-    if line.count(",") == 1:
-        line += " million"
-    mark_neg = False
-    if "-" in line:
-        mark_neg = True
-    line = line.replace("$", "").replace(",", "")
-
-    if "million" in line:
-        value = re.sub(r'[^(0-9) ]', '', line) 
-        value = float(value) * 1e6
-    elif "billion" in line:
-        value = re.sub(r'[^(0-9) ]', '', line) 
-        value = float(value) * 1e9
-        # number = line.split(" ")[0]
-        # if len(number.split(".")[0]) > 2: 
-        #     value = float(number) * 1e6 # probably is actually a million
-        # else:
-        #     value = float(number) * 1e9
-    else:
-        if line.count(",") < 1:
-            value = re.sub(r'[^(0-9) ]', '', line) 
-            value = float(value) * 1e6
-        else:
-            value = re.sub(r'[^(0-9) ]', '', line) 
-            value = float(value)
-    
-    # avoid exploding exponential terms due to llama instability
-    if value > 1e9:
-        stem = value / (10**int(np.log10(value)))
-        value = stem * 1e9
-    return -value if mark_neg else value
 
 def hydrate_operating_segments_with_10k_metric(df_10k_total: pd.DataFrame, df_operating_segments: pd.DataFrame, metric_10k: str) -> pd.DataFrame:
     """
@@ -241,10 +157,7 @@ def hydrate_operating_segments_with_10k_metric(df_10k_total: pd.DataFrame, df_op
 
                 # NOTE: Used to avoid inputting to large of contexts
                 context: str = "\n\n".join(operating_segment_specific_snippets[:100])
-                logging.info(f"Segments found for\t{company, year, operating_segment}\tCount: {len(operating_segment_specific_snippets)}\tTotal Token Estimate: {len(context)}")
-                llama_response: str = identify_metric_10k_by_operating_segment(context, metric_10k, company, year, operating_segment)
-                metric_10k_value = format_monetary_from_llama_response(llama_response)
-                logging.info(f"Llama responded with: \t{llama_response}\t{metric_10k_value}")
+                metric_10k_value: float = identify_metric_10k_by_operating_segment(context, metric_10k, company, year, operating_segment)
                 metric_10k_list.append(metric_10k_value)
 
     df_operating_segments[METRIC_10K_NAME] = metric_10k_list

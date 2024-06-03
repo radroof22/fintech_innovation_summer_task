@@ -19,5 +19,4 @@ if __name__ == "__main__":
     unique_operating_segments = df_ticker["Operating Segment"].unique()
     st.bar_chart(df_ticker, x="Year", y="Revenue", color="Operating Segment")
     st.markdown("*Note missing years are due to LLAMA instability in parsing 10-K reports*. Updates will be made.")
-    # st.dataframe(df_ticker)
     
