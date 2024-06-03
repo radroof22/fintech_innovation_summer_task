@@ -4,6 +4,8 @@ from pathlib import Path
 import logging
 
 import pandas as pd
+from tqdm import tqdm
+import numpy as np
 
 from llm import identify_operating_segments, identify_metric_10k_by_operating_segment
 
@@ -123,7 +125,7 @@ def extract_operating_segments(df: pd.DataFrame) -> pd.DataFrame:
 
     unique_companies = df.Company.unique()
     
-    for company in unique_companies:
+    for company in tqdm(unique_companies):
         df_company = df[df.Company == company]
         unique_years = df_company.Year.unique()
 
@@ -170,7 +172,9 @@ def format_monetary_from_llama_response(llama_response: str) -> float:
     #     continue
     if line.count(",") == 1:
         line += " million"
-    
+    mark_neg = False
+    if "-" in line:
+        mark_neg = True
     line = line.replace("$", "").replace(",", "")
 
     if "million" in line:
@@ -192,7 +196,11 @@ def format_monetary_from_llama_response(llama_response: str) -> float:
             value = re.sub(r'[^(0-9) ]', '', line) 
             value = float(value)
     
-    return value
+    # avoid exploding exponential terms due to llama instability
+    if value > 1e9:
+        stem = value / (10**int(np.log10(value)))
+        value = stem * 1e9
+    return -value if mark_neg else value
 
 def hydrate_operating_segments_with_10k_metric(df_10k_total: pd.DataFrame, df_operating_segments: pd.DataFrame, metric_10k: str) -> pd.DataFrame:
     """
@@ -214,7 +222,7 @@ def hydrate_operating_segments_with_10k_metric(df_10k_total: pd.DataFrame, df_op
     metric_10k_list = []
     unique_companies = df_operating_segments.Company.unique()
     
-    for company in unique_companies:
+    for company in tqdm(unique_companies):
         df_company = df_operating_segments[df_operating_segments.Company == company]
         unique_years = df_company.Year.unique()
 
@@ -225,7 +233,8 @@ def hydrate_operating_segments_with_10k_metric(df_10k_total: pd.DataFrame, df_op
 
             by_operating_segment_matches = list(re.finditer(BY_OPERATING_SEGMENT_REGEX, item_7_total_text))
             by_operating_segment_snippets = [item_7_total_text[m.start() - DELTA: m.end() + DELTA] for m in by_operating_segment_matches]
-            for operating_segment in df_os_specific[metric_10k].unique():
+            
+            for operating_segment in df_os_specific["Operating Segment"].unique():
                 operating_segment_spec_regex = generate_operating_segment_specific_regex(str(operating_segment))
                 operating_segment_spec_matches: list[str] = list(re.finditer(operating_segment_spec_regex, item_7_total_text))
                 operating_segment_specific_snippets: list[str] = [item_7_total_text[m.start() - DELTA: m.end() + DELTA] for m in operating_segment_spec_matches] + by_operating_segment_snippets
