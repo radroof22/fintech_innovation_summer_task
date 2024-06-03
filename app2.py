@@ -1,6 +1,3 @@
-import json
-import os
-
 import pandas as pd
 import streamlit as st
 
@@ -21,6 +18,6 @@ if __name__ == "__main__":
     df_ticker = df_ticker.dropna(axis=0)
     unique_operating_segments = df_ticker["Operating Segment"].unique()
     st.bar_chart(df_ticker, x="Year", y="Revenue", color="Operating Segment")
-    st.markdown(unique_operating_segments)
-    st.dataframe(df_ticker)
+    st.markdown("*Note missing years are due to LLAMA instability in parsing 10-K reports*. Updates will be made.")
+    # st.dataframe(df_ticker)
     
