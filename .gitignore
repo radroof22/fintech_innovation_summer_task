@@ -1,5 +1,6 @@
 sec-edgar-filings
 data
+.DS_STORE
 
 *.pdf
 

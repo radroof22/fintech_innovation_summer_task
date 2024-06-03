@@ -30,7 +30,9 @@ def ask_llama(messages: list[dict[str, str]]) -> str:
     }
     resp = requests.post("https://api.deepinfra.com/v1/openai/chat/completions", json=data, headers=headers).json()
     if "choices" not in resp:
+        # error: DeepInfra request failed. Print out error.
         print(resp)
+
     llama_response: str = resp["choices"][0]["message"]["content"]
     time.sleep(RATE_LIMITING)
     return llama_response
@@ -44,6 +46,9 @@ def summarize_operating_segments(llama_responses: list[str]):
     Args:
     - llama_responses: list[str]
         List of string responses from Llama for the Operating Segment extraction task.
+
+    Returns:
+    - llama response to summarization task
     """
 
     request_body = [
@@ -142,7 +147,6 @@ def identify_metric_10k_by_operating_segment(context: str, metric_10k: str, comp
     Returns:
     - string
         Llama's raw resposne to trying to identify the operating_segments
-
     """
     
     EXTRACT_REVENUE_BY_OPERATING_SEGMENT_PROMPT = f"""
@@ -234,8 +238,6 @@ def consolidate_metric_by_operating_segment_responses(responses: list[str], metr
 
     Return:
     - string of the consolidated response for the metric_10k according to the llama responses.
-
-
     """
     request_body = [
         {

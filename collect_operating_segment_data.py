@@ -5,7 +5,6 @@ import logging
 
 import pandas as pd
 from tqdm import tqdm
-import numpy as np
 
 from llm import identify_operating_segments, identify_metric_10k_by_operating_segment
 
